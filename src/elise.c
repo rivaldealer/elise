@@ -6,10 +6,11 @@
 #include <curl/curl.h>
 #include "networking.h"
 #include "summoner.h"
+#include "error.h"
 
-int main() {
+int main(int argc, char* argv[]) {
   // setup a parser for this URI
-  API_KEY = "RGAPI-b5bdb4af-d037-4639-889e-d7998f116bea";
+  API_KEY = "RGAPI-d233bdf4-ade2-43e6-9ee5-f162a818e89f";
 
   // setup only necessary members that the build needs as input
   struct Uri uri;
@@ -20,15 +21,20 @@ int main() {
 
   // Create a buffer for uri_builder to return string data to then
   char str[512];
+
   // Pass uri struct as reference for less memory usage
-  if(uri_builder(&uri, str) <=0) {
+
+  // uri builder needs to have another buffer for error messages
+  // errno_t uri_builder(&uri, str, &err)
+  if(uri_builder(&uri, str) != ELISE_OK) {\
+      // printf("%s\n", err);
       // TODO: error handling
       return -1;
   }
   // create buffer to hold the summoner data in json
   char buff[1024];
-  int result = get_summoner_by_name(str, buff, "Deftsu");
-  if (result != 0) {
+
+  if (get_summoner_by_name(str, buff, "C9 Sneaky") != ELISE_OK) {
       // error
       return -1;
   }

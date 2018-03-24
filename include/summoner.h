@@ -4,7 +4,7 @@
 //
 #include <stdlib.h> // size_t
 #include <stdarg.h>
-
+#include "error.h"
 #include "networking.h"
 
 extern struct {
@@ -20,6 +20,7 @@ extern struct {
 // }Caller;
 
 // TODO: Make uri a type so that you can't just pass any char* to it
-int get_summoner_by_name(char* str, char* buffer, char* name);
-int get_summoner_by_account_id(char* str, char* buffer, size_t id);
-int get_summoner_by_summoner_id(char* str, char* buffer, size_t id);
+errno_t get_summoner_by_name(char* str, char* buffer, char* name);
+errno_t get_summoner_by_account_id(char* str, char* buffer, size_t id);
+errno_t get_summoner_by_summoner_id(char* str, char* buffer, size_t id);
+errno_t remove_spaces(char* name, char* buf);

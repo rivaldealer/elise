@@ -3,8 +3,19 @@
 //  elise
 //
 // contains all relevant error handling
-
+#ifndef _ERROR_H_
+#define _ERROR_H_
 #include <errno.h>
 
-// global int to store error results
-extern int errno;
+#define ELISE_OK 0
+
+
+enum {
+    INVALID_STRING = 1,
+    NULL_STRING,
+    EMPTY_STRING,
+    CALLBACK_ERROR, // specific to the write_callback function
+}ErrorCodes;
+
+#endif
+// do some error handling
