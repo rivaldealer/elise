@@ -12,14 +12,32 @@
 #include <curl/curl.h>
 
 errno_t uri_builder(struct Uri *uri, char* buffer) {
-    // checks need to be done here ^ to be sure they're not null or invalid
-    // setup uri struct
+    // (void *) casts here to ignore compiler warnings
+    // the result will be NULL if it's not set by the user so this is still
+    // a proper and necessary check
+    if ((void*)uri->region == NULL) { // user forgot to specify region
+        fprintf(stderr, "Error: Region is either not supported or isn't specified in URI struct.\n");
+        return NULL_REGION;
+    }
+    if ((void*)uri->api == NULL) {
+        fprintf(stderr, "Error: API is either not supported or isn't specified in URI struct.\n");
+        return NULL_API;
+    }
+    // no checks needed for version in uri, because we set it even if the user
+    // doesn't specify it.
 
-    // more advanced erorr handling is to be done in the future
+
+
     char* region = parse_region(uri->region);
+    if (region == NULL) {
+        // probably should change this so that the error handling makes more sense
+        // look at comments above parse_region()
+        return -1;
+    }
     // hostname is the same for every region as of this commit
-    char* hostname = ".api.riotgames.com";
+    const char* hostname = ".api.riotgames.com";
     char* api = parse_api(uri->api);
+    if (api == NULL) return -1;
     char* version = parse_version(uri->version);
 
     char address[512] = "https://";
@@ -39,7 +57,8 @@ errno_t uri_builder(struct Uri *uri, char* buffer) {
         return ELISE_OK;
     }
     // error
-    return fprintf(stderr, "Error: %s\n", strerror(errno));
+    fprintf(stderr, "Error: %s\n", strerror(errno));
+    return -1;
 }
 
 // instead of returning a string, return an errno_t instead and pass a buffer
@@ -62,7 +81,8 @@ char* parse_region(Region region) {
         case 11: return "pbe1";
         // todo: return: REGION_UNSUPPORTED;
         // terrible, remove this v
-        default: return "Error: Region not supported.\n";
+        default: fprintf(stderr, "Error: Region specified is not supported.\n");
+                 return NULL;
     }
 }
 
@@ -79,7 +99,8 @@ char* parse_api(Api api) {
         case 8: return "/lol/tournament-stub/";
         case 9: return "/lol/tournament/";
         // also terrible
-        default: return "Error: Requested API is not supported.\n";
+        default: fprintf(stderr, "Error: API specified is not supported.\n");
+                 return NULL;
     }
 }
 

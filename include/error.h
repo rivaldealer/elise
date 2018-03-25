@@ -13,6 +13,9 @@
 enum {
     INVALID_STRING = 1,
     NULL_STRING,
+    NULL_REGION,
+    NULL_API,
+    STRING_TOO_LARGE,
     EMPTY_STRING,
     CALLBACK_ERROR, // specific to the write_callback function
 }ErrorCodes;

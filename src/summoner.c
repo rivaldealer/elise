@@ -55,7 +55,12 @@ errno_t get_summoner_by_summoner_id(char* str, char* buffer, size_t id) {
 
 // Luckily only one api request supports usernames in text rather than by id
 errno_t remove_spaces(char* name, char* buf) {
-    // I think max characters for usernames is 16, but who knows...
+    if (name == NULL) return NULL_STRING;
+    // Eventually double check the maxmimum character length of a summoner name
+    if (strlen(name) > 24) {
+        fprintf(stderr, "Error: The summoner name you've entered is longer than 24 characters.");
+        return STRING_TOO_LARGE;
+    }
     size_t i, j;
     for (i = 0, j = 0; i < strlen(name); i++, j++) {
         // if the character is a space, then we add 1 to i to make sure

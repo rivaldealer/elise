@@ -10,10 +10,12 @@
 
 int main(int argc, char* argv[]) {
   // setup a parser for this URI
-  API_KEY = "RGAPI-d233bdf4-ade2-43e6-9ee5-f162a818e89f";
+  API_KEY = "RGAPI-b72ce6ec-b6ea-49d8-bc23-0f787df0d14c";
 
   // setup only necessary members that the build needs as input
   struct Uri uri;
+  // TODO: passing a value from api struct, works on region as a value
+  // since they both correspond to integer values.
   uri.region = NA;
   uri.api = SUMMONER;
   // uri.version is optional, defaults to v3
@@ -24,9 +26,7 @@ int main(int argc, char* argv[]) {
 
   // Pass uri struct as reference for less memory usage
 
-  // uri builder needs to have another buffer for error messages
-  // errno_t uri_builder(&uri, str, &err)
-  if(uri_builder(&uri, str) != ELISE_OK) {\
+  if(uri_builder(&uri, str) != ELISE_OK) {
       // printf("%s\n", err);
       // TODO: error handling
       return -1;
