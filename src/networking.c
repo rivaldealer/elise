@@ -2,15 +2,15 @@
 //  networking.c
 //  elise
 //
-
-// TODO: complete the URI -- uri_end
-// create handlers for each Api enum
+//  contains all networking function definitions of libelise
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "networking.h"
 #include <curl/curl.h>
+#include "networking.h"
 
+
+// returns ELISE_OK on success all other values indicate failure
 errno_t uri_builder(struct Uri *uri, char* buffer) {
     // (void *) casts here to ignore compiler warnings
     // the result will be NULL if it's not set by the user so this is still
@@ -26,37 +26,30 @@ errno_t uri_builder(struct Uri *uri, char* buffer) {
     // no checks needed for version in uri, because we set it even if the user
     // doesn't specify it.
 
-
-
     char* region = parse_region(uri->region);
     if (region == NULL) {
         // probably should change this so that the error handling makes more sense
         // look at comments above parse_region()
-        return -1;
+        return NULL_REGION;
     }
     // hostname is the same for every region as of this commit
     const char* hostname = ".api.riotgames.com";
     char* api = parse_api(uri->api);
-    if (api == NULL) return -1;
+    if (api == NULL) return NULL_API;
     char* version = parse_version(uri->version);
 
-    char address[512] = "https://";
-    // I'm sure there's a better way to do this, but this will do for now.
-    // Also, oddly enough strcat_s is an optional feature for compilers using
-    // the C11 standard.
-
-    // note that it takes the size of address and not the size of the buffer
+    // note that snprinf takes the size of address and not the size of the buffer
     // passed to this function
     // this way we know that it will never be more than 512 characters
     // if it needs to be, we change it here.
+    char address[512] = "https://";
 
-
-    //printf("%s : %lu : %lu\n", buffer, sizeof(buffer), strlen(buffer));
-    // snprintf returns size_t, negative numbers aren't possible
-    if (snprintf(buffer, sizeof(address), "%s%s%s%s%s", address, region, hostname, api, version) != 0) {
+    errno = 0;
+    // Eventually check to make sure all bytes from each string where written
+    // Right now it just assumes if it wrote more than 0 then it wrote all of the bytes
+    if (snprintf(buffer, sizeof(address), "%s%s%s%s%s", address, region, hostname, api, version) > 0) {
         return ELISE_OK;
     }
-    // error
     fprintf(stderr, "Error: %s\n", strerror(errno));
     return -1;
 }
@@ -79,10 +72,8 @@ char* parse_region(Region region) {
         case 9:  return "tr1";
         case 10: return "ru";
         case 11: return "pbe1";
-        // todo: return: REGION_UNSUPPORTED;
-        // terrible, remove this v
         default: fprintf(stderr, "Error: Region specified is not supported.\n");
-                 return NULL;
+        return NULL;
     }
 }
 
@@ -98,9 +89,8 @@ char* parse_api(Api api) {
         case 7: return "/lol/summoner/";
         case 8: return "/lol/tournament-stub/";
         case 9: return "/lol/tournament/";
-        // also terrible
         default: fprintf(stderr, "Error: API specified is not supported.\n");
-                 return NULL;
+        return NULL;
     }
 }
 
@@ -114,82 +104,94 @@ char* parse_version(size_t version){
     }
 }
 
-
-// document the fuck out of this function.
-// it's messy as fuck.
-
-// currently returns 0 on success, -1 on failure
-// TODO: proper error handling
-
-// be more accurate with the names
-// e.g. riot_get_request(), ddragon_get_request(), cdragon_get_request(), etc...
-errno_t get_request(char* uri_string, char* buffer, const char* api_key) {
-    // checks need to be done here ^
-
-    // do some curl magics here
-    // add api key to string
+// returns ELISE_OK on success
+// returns CURL_ERROR if curl checks fail.
+// returns NULL_X or STRING_X if it runs into user input issues
+errno_t riot_get_request(char* uri_string, char* buffer, const char* api_key) {
+    if (uri_string == NULL) return NULL_STRING;
+    // API_KEY erorr checking
+    if (API_KEY == NULL) {
+        fprintf(stderr, "Error: API_KEY not set.\n");
+        return NULL_STRING;
+    }if (strlen(API_KEY) > 42) {
+        // current api key is RGAPI-[+36 characters].
+        // This is for dev keys, I'm not sure about production level keys.
+        fprintf(stderr, "Error: API Key is longer than 42 characters.\n");
+        return STRING_TOO_LARGE;
+    }if (strlen(API_KEY) < 42) {
+        fprintf(stderr, "Error: API Key is shorter than 42 characters.\n");
+        return STRING_TOO_SMALL;
+    }
 
     // literal + 1;
-    char query[10] = "?api_key=";
+    const char query[10] = "?api_key=";
     char end[512];
 
-    // TODO: error checking on the return value of this call
-    snprintf(end, sizeof(end), "%s%s%s", uri_string, query, api_key);
-    //printf("%s\n", end);
+    int check = snprintf(end, sizeof(end), "%s%s%s", uri_string, query, api_key);
+    if (check != strlen(end)) {
+        fprintf(stderr, "Error: Not all bytes were able to be written to string end.\n");
+        return -1;
+    }
+
+    // start curl magics
+    // probably should fold all of this into a function for the next x_get_request() functions.
     CURL *curl;
     CURLcode res;
     char result[512];
 
     curl = curl_easy_init();
     if(curl) {
-        //printf("%s\n", end);
-      if(curl_easy_setopt(curl, CURLOPT_URL, end) != CURLE_OK) {
-          // make new exit code for curl fails
-          return -1;
-      }
-      /* example.com is redirected, so we tell libcurl to follow redirection */
-      if(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) printf("Failed.\n");
-      if(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback) != CURLE_OK) {
-          // always try to free resources on failure
-          // TODO: cleanup the other unchecked errors
-          curl_easy_cleanup(curl);
+        // eventually write errors out to the stderr, for consistency
+        // see CURLcode res below
+        if(curl_easy_setopt(curl, CURLOPT_URL, end) != CURLE_OK) {
+            curl_easy_cleanup(curl);
+            return CURL_ERROR;
+        }
+        if(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
+            curl_easy_cleanup(curl);
+            return CURL_ERROR;
+        }
+        // specify a callback function to be called when the response is received
+        if(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback) != CURLE_OK) {
+            // always try to free resources on failure
+            curl_easy_cleanup(curl);
+            return CURL_ERROR;
+        }
+        // perform the get request and store the result in res
+        res = curl_easy_perform(curl);
+        // proper curl error checking
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        }
 
-
-          // write a new function to replace spaces with %20 so that curl will
-          // properly get the request json
-          // no need to overthink it.
-          // also delete all thos printf("failed\n"); calls geez.
-          return -1;
-      }
-
-      /* Perform the request, res will get the return code */
-      res = curl_easy_perform(curl);
-      /* Check for errors */
-      if(res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-    }
-
-    if(snprintf(buffer, sizeof(json), "%s", json) > 0) {
-        //printf("wrote some shit \n");
+        // attempt to write our json response out to our buffer
+        // ideally we want to return from here
+        if(snprintf(buffer, sizeof(json), "%s", json) > 0) {
+            curl_easy_cleanup(curl);
+            return ELISE_OK;
+        }
+        // if our write fails, we clean up and return -1;
         curl_easy_cleanup(curl);
-        return 0;
+        return CURL_ERROR;
     }
-      /* always cleanup */
-      curl_easy_cleanup(curl);
-    }
-    // attempt to write out our json to the buffer
-
-
-    return -1; // error
+    // if for some reason curl is inaccesable we will land here.
+    fprintf(stderr, "Error: Undefined curl behavior, please submit an issue on the libelise github.\n");
+    return CURL_ERROR;
+    // end curl magics
 }
 
-static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    // checks need to be done here ^ on every argument to make sure they're not
+// curl's integrated callback for passing response data to a function
+// returns size of the response data on success, any other value indicates failure
+static size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
+    if(ptr == NULL) {
+        fprintf(stderr, "Error: Curl response data is null in write_callback().\n");
+        // curl has an error message if we return from this function without the bytes written
+        return 0;
+    }
     // null or invalid
     //printf("hello\n");
     size_t real_size = size * nmemb;
     //char data[512];
-    printf("%s\n", ptr);
     // we add one to real_size, otherwise we lose the json ending bracket
     if (snprintf(json, real_size+1, "%s", ptr) != 0) {
         // checks need to be done here ^

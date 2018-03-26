@@ -23,4 +23,4 @@ extern struct {
 errno_t get_summoner_by_name(char* str, char* buffer, char* name);
 errno_t get_summoner_by_account_id(char* str, char* buffer, size_t id);
 errno_t get_summoner_by_summoner_id(char* str, char* buffer, size_t id);
-errno_t remove_spaces(char* name, char* buf);
+errno_t remove_spaces(char* name, char* bu);

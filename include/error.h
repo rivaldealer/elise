@@ -16,8 +16,10 @@ enum {
     NULL_REGION,
     NULL_API,
     STRING_TOO_LARGE,
-    EMPTY_STRING,
+    STRING_TOO_SMALL,
+    STRING_EMPTY,
     CALLBACK_ERROR, // specific to the write_callback function
+    CURL_ERROR      // errors here currently only happen within riot_get_request();
 }ErrorCodes;
 
 #endif

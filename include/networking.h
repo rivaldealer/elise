@@ -60,7 +60,7 @@ static char json[512];
 // uri builder takes a Uri struct and API key then returns the complete URI string
 errno_t uri_builder(struct Uri *uri, char* buffer);
 // complete uri is to be the handler for all api endings
-errno_t get_request(char* uri_string, char* buffer, const char* api_key);
+errno_t riot_get_request(char* uri_string, char* buffer, const char* api_key);
 
 char* parse_region(Region region);
 char* parse_api(Api api);
